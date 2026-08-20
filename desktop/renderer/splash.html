@@ -52,10 +52,6 @@
       box-shadow: 0 8px 24px rgba(255, 45, 85, .3);
     }
     .btn-discord:hover { filter: brightness(1.08); }
-    .btn-key {
-      background: transparent; color: var(--muted); border: 1px solid var(--border);
-    }
-    .btn-key:hover { color: var(--text); border-color: var(--muted); }
     .ok { color: #22c55e; font-weight: 600; }
     .err { color: #f87171; font-weight: 600; }
   </style>
@@ -71,7 +67,6 @@
     </div>
     <div class="actions" id="actions">
       <button class="btn-discord" id="btn-discord">🔗 Se connecter avec Discord</button>
-      <button class="btn-key" id="btn-key">J'ai déjà une clé</button>
     </div>
   </div>
   <script>
@@ -79,7 +74,6 @@
     const spinner = document.getElementById('spinner');
     const actions = document.getElementById('actions');
     const btnDiscord = document.getElementById('btn-discord');
-    const btnKey = document.getElementById('btn-key');
 
     window.booststream.splash.onStatus(({ status, detail }) => {
       spinner.classList.toggle('show', status === 'checking' || status === 'login');
@@ -107,10 +101,6 @@
       spinner.classList.add('show');
       statusEl.textContent = 'Connexion à Discord…';
       window.booststream.splash.login();
-    });
-
-    btnKey.addEventListener('click', () => {
-      window.booststream.splash.openMain();
     });
   </script>
 </body>
