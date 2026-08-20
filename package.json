@@ -1,0 +1,12 @@
+{
+  "name": "booststream",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BoostStream - App d'optimisation streaming avec licence par clé, paiement Stripe et vérification matérielle (HWID)",
+  "scripts": {
+    "setup": "npm.cmd --prefix server install && npm.cmd --prefix desktop install",
+    "server": "npm.cmd --prefix server run dev",
+    "desktop": "npm.cmd --prefix desktop start",
+    "web": "npm.cmd --prefix server run dev"
+  }
+}

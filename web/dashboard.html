@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord — BoostStream</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page">
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="logo" href="index.html">⚡ BoostStream</a>
+      <nav><a href="index.html">Accueil</a></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <h2>Vérifier ma clé</h2>
+      <form id="status-form" class="form-row">
+        <input type="text" id="key-input" placeholder="BOOST-XXXX-XXXX-XXXX-XXXX" required>
+        <button class="btn btn-primary" type="submit">Vérifier</button>
+      </form>
+    </section>
+
+    <section id="result" class="section hidden">
+      <div class="card">
+        <h3 id="lic-key"></h3>
+        <p id="lic-status"></p>
+        <p id="lic-plan"></p>
+        <p id="lic-expiry"></p>
+        <h4>Appareils liés</h4>
+        <table>
+          <thead><tr><th>Appareil</th><th>HWID</th><th>Dernière activité</th></tr></thead>
+          <tbody id="devices"></tbody>
+        </table>
+        <p id="rebinds" class="muted"></p>
+      </div>
+    </section>
+    <p id="error" class="error hidden"></p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

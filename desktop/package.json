@@ -1,0 +1,39 @@
+{
+  "name": "vxmp-opti-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vxamp Opti - Application desktop d'optimisation streaming (Windows)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:no-sandbox": "electron . --no-sandbox",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "opti.vxmp.app",
+    "productName": "VXMP Opti",
+    "directories": {
+      "output": "dist-exe"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "VXMP-Opti.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-packager": "^17.1.2"
+  }
+}

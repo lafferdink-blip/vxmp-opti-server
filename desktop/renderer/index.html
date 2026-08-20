@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vxamp Opti</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="red">
+  <div class="bg-fx" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-icon brand-icon-main">⚡</span>
+      <span class="brand-icon brand-icon-spider">🕷️</span>
+      Vxamp Opti
+    </div>
+
+    <nav>
+      <button class="tab active" data-tab="postinstall"><span class="tab-ico">🧹</span>Post install</button>
+      <button class="tab" data-tab="home"><span class="tab-ico">🏠</span>Accueil</button>
+      <button class="tab" data-tab="jeux"><span class="tab-ico">🎮</span>Jeux</button>
+      <button class="tab" data-tab="licence"><span class="tab-ico">🔑</span>Licence</button>
+      <button class="tab" data-tab="gpu"><span class="tab-ico">🖥️</span>Carte graphique</button>
+      <button class="tab" data-tab="bios"><span class="tab-ico">💾</span>BIOS</button>
+      <button class="tab" data-tab="alim"><span class="tab-ico">🔋</span>Alimentation</button>
+      <button class="tab" data-tab="optimiser"><span class="tab-ico">🛠️</span>Optimiser</button>
+      <button class="tab" data-tab="obs"><span class="tab-ico">🎥</span>Preset OBS</button>
+      <button class="tab" data-tab="reseau"><span class="tab-ico">📡</span>Réseau</button>
+    </nav>
+
+    <div class="theme-box">
+      <div class="theme-label">Thème</div>
+      <div class="theme-swatches">
+        <button class="swatch swatch-red active" data-theme="red" title="Rouge" aria-label="Thème rouge"></button>
+        <button class="swatch swatch-spider" data-theme="spiderman" title="Spider-Man" aria-label="Thème Spider-Man"></button>
+        <button class="swatch swatch-classic" data-theme="classic" title="Classique" aria-label="Thème classique"></button>
+      </div>
+    </div>
+
+    <div class="status-pill" id="lic-status-pill">Licence : —</div>
+  </aside>
+
+  <main class="content">
+    <!-- POST INSTALL -->
+    <section id="tab-postinstall" class="panel active">
+      <h1>Post install 🧹</h1>
+      <p class="muted">Assistant de mise en route : choisis ton jeu, ce que tu veux désactiver sur Windows,
+         et installe le meilleur pilote pour ta carte graphique.</p>
+
+      <div class="wizard-steps">
+        <div class="wz-step active"><span class="wz-num">1</span> Ton jeu</div>
+        <div class="wz-step"><span class="wz-num">2</span> Windows</div>
+        <div class="wz-step"><span class="wz-num">3</span> Pilote GPU</div>
+        <div class="wz-step"><span class="wz-num">4</span> Appliquer</div>
+      </div>
+
+      <!-- Étape 1 : jeux -->
+      <div class="wz-step-body" data-step="1">
+        <h2>À quel jeu joues-tu ?</h2>
+        <div id="pi-games" class="game-grid"></div>
+        <div class="actions">
+          <button id="pi-games-next" class="btn btn-primary">Suivant →</button>
+        </div>
+      </div>
+
+      <!-- Étape 2 : désactiver Windows -->
+      <div class="wz-step-body hidden" data-step="2">
+        <h2>Que souhaites-tu désactiver sur Windows ?</h2>
+        <div id="pi-disable-list"></div>
+        <div class="actions">
+          <button class="btn" data-wz-prev>← Précédent</button>
+          <button id="pi-disable-next" class="btn btn-primary">Suivant →</button>
+        </div>
+      </div>
+
+      <!-- Étape 3 : pilote -->
+      <div class="wz-step-body hidden" data-step="3">
+        <h2>Pilote de la carte graphique</h2>
+        <div id="pi-driver" class="card"></div>
+        <div class="actions">
+          <button class="btn" data-wz-prev>← Précédent</button>
+          <button id="pi-driver-next" class="btn btn-primary">Suivant →</button>
+        </div>
+      </div>
+
+      <!-- Étape 4 : appliquer -->
+      <div class="wz-step-body hidden" data-step="4">
+        <h2>Récapitulatif</h2>
+        <div id="pi-summary" class="card"></div>
+        <div class="actions">
+          <button class="btn" data-wz-prev>← Précédent</button>
+          <button id="pi-apply" class="btn btn-primary">✅ Appliquer les optimisations</button>
+          <button id="pi-revert" class="btn">↩️ Annuler les désactivations</button>
+        </div>
+        <div id="pi-msg" class="msg"></div>
+        <div id="pi-results" class="results hidden"></div>
+      </div>
+    </section>
+
+    <!-- ACCUEIL -->
+    <section id="tab-home" class="panel">
+      <h1>Diagnostic de votre machine</h1>
+      <div id="admin-banner" class="banner hidden"></div>
+      <div id="hw-summary" class="hw-grid"></div>
+      <h2>Recommandations</h2>
+      <ul id="diagnose-list" class="diagnose"></ul>
+      <button id="btn-rescan" class="btn">↻ Relancer le diagnostic</button>
+    </section>
+
+    <!-- JEUX -->
+    <section id="tab-jeux" class="panel">
+      <h1>Jeux 🎮</h1>
+      <p class="muted">Sélectionne tes jeux : Vxamp Opti applique automatiquement les
+         meilleurs paramètres Windows (priorité CPU/GPU élevée, GPU haute performance,
+         désactivation des optimisations plein écran) et t'affiche les réglages en jeu conseillés.</p>
+      <div class="games-list" id="games-list"></div>
+      <div class="actions">
+        <button id="btn-games-apply" class="btn btn-primary">⚡ Appliquer les meilleurs paramètres</button>
+        <button id="btn-games-revert" class="btn">↩️ Restaurer les valeurs par défaut</button>
+      </div>
+      <div id="games-msg" class="msg"></div>
+      <div id="games-results" class="results hidden"></div>
+    </section>
+
+    <!-- LICENCE -->
+    <section id="tab-licence" class="panel">
+      <h1>Activer ma clé</h1>
+      <p class="muted">Entrez la clé reçue par email après votre achat. Elle sera liée
+         à l'empreinte matérielle unique de ce PC (HWID).</p>
+      <div class="row">
+        <input id="lic-key" placeholder="BOOST-XXXX-XXXX-XXXX-XXXX" spellcheck="false">
+        <button id="btn-activate" class="btn btn-primary">Activer</button>
+      </div>
+      <p class="muted" style="margin-top:10px">— ou —</p>
+      <button id="btn-discord-login" class="btn" style="margin-top:10px">🔗 Se connecter avec Discord (vérifier mon achat)</button>
+      <div id="lic-details" class="card hidden"></div>
+      <button id="btn-rebind" class="btn hidden">🔄 Ré-associer à ce PC</button>
+      <p id="lic-msg" class="msg"></p>
+    </section>
+
+    <!-- CARTE GRAPHIQUE -->
+    <section id="tab-gpu" class="panel">
+      <h1>Carte graphique</h1>
+      <p class="muted">Détection du GPU et outils adaptés à ta marque (NVIDIA / AMD / Intel).</p>
+      <div id="gpu-badges" class="gpu-badges"></div>
+      <div id="gpu-cards" class="hw-grid"></div>
+      <div class="actions">
+        <button id="btn-gpu-panel" class="btn">🖥️ Ouvrir le panneau du GPU</button>
+        <button id="btn-gpu-smi" class="btn">📊 Stats NVIDIA (nvidia-smi)</button>
+      </div>
+      <div id="gpu-msg" class="msg"></div>
+      <div id="gpu-smi" class="card hidden"></div>
+      <div id="gpu-best" class="gpu-best"></div>
+    </section>
+
+    <!-- BIOS -->
+    <section id="tab-bios" class="panel">
+      <h1>BIOS / Firmware</h1>
+      <p class="muted">Informations sur la carte mère et le BIOS de cette machine.</p>
+      <div id="bios-cards" class="hw-grid"></div>
+      <div class="actions">
+        <button id="btn-msinfo" class="btn">ℹ️ Ouvrir les informations système</button>
+        <button id="btn-bios-refresh" class="btn">↻ Actualiser</button>
+      </div>
+      <div id="bios-msg" class="msg"></div>
+    </section>
+
+    <!-- ALIMENTATION -->
+    <section id="tab-alim" class="panel">
+      <h1>Alimentation</h1>
+      <p class="muted">Plan d'alimentation actif, batterie et actions rapides.</p>
+      <div id="alim-current" class="card"></div>
+      <h2>Plans d'alimentation</h2>
+      <div id="alim-schemes"></div>
+      <h2>Actions rapides</h2>
+      <div class="actions">
+        <button id="btn-ultra" class="btn btn-primary">⚡ Activer le plan Ultimate Performance</button>
+        <button id="btn-no-sleep" class="btn">🌙 Désactiver la veille</button>
+        <button id="btn-disk-off" class="btn">💽 Jamais éteindre le disque</button>
+        <button id="btn-monitor-15" class="btn">🖥️ Écran : 15 min</button>
+        <button id="btn-monitor-never" class="btn">🖥️ Écran : jamais</button>
+      </div>
+      <div id="alim-msg" class="msg"></div>
+    </section>
+
+    <!-- OPTIMISER -->
+    <section id="tab-optimiser" class="panel">
+      <h1>Optimisation</h1>
+      <p class="muted">Sélectionnez les réglages à appliquer. Tout est <strong>réversible</strong>.
+         Les actions système et services nécessitent les droits administrateur (une invite UAC s'affichera).</p>
+      <div id="tweak-list"></div>
+      <div class="actions">
+        <button id="btn-apply" class="btn btn-primary">Appliquer la sélection</button>
+        <button id="btn-revert" class="btn">Rétablir les valeurs d'origine</button>
+      </div>
+      <div id="opt-msg" class="msg"></div>
+      <div id="opt-results" class="results hidden"></div>
+    </section>
+
+    <!-- OBS -->
+    <section id="tab-obs" class="panel">
+      <h1>Preset OBS recommandé</h1>
+      <p class="muted">Basé sur votre matériel détecté et un test de débit automatique.</p>
+      <div class="actions">
+        <button id="btn-generate" class="btn btn-primary">🎥 Générer le preset</button>
+        <button id="btn-test-speed" class="btn">⚡ Tester ma connexion</button>
+      </div>
+      <div id="speed-result" class="card hidden"></div>
+      <div id="obs-preset" class="card hidden"></div>
+    </section>
+
+    <!-- RESEAU -->
+    <section id="tab-reseau" class="panel">
+      <h1>Test de débit</h1>
+      <p class="muted">Mesure le débit descendant réel et le ping de votre connexion.</p>
+      <button id="btn-speed-only" class="btn btn-primary">Lancer le test</button>
+      <div id="speed-only" class="card hidden"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

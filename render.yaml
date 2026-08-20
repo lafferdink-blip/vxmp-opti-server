@@ -1,0 +1,29 @@
+# Fichier de déploiement Render (gratuit)
+# Root directory du service : server
+services:
+  - type: web
+    name: vxmp-opti
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: OWNER_DISCORD_ID
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: DOWNLOAD_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: KEY_PREFIX
+        value: BOOST
+      - key: MAX_DEVICES
+        value: "2"
+      - key: ALLOWED_REBINDS
+        value: "3"

@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+dist-exe/
+data/
+*.log
+
+# Environnement (jamais commiter les secrets)
+server/.env
+.env
+
+# OS / éditeur
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc

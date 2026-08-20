@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>VXMP Opti</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #141823;
+      --border: #2a3245;
+      --text: #e8eaf1;
+      --muted: #8b94a8;
+      --red: #ff2d55;
+      --orange: #ff8a00;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: radial-gradient(120% 120% at 50% 0%, #1a1226 0%, var(--bg) 55%);
+      color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-app-region: drag;
+    }
+    .wrap { text-align: center; padding: 24px; width: 100%; }
+    .logo {
+      font-size: 52px; font-weight: 900; letter-spacing: 4px;
+      background: linear-gradient(90deg, var(--red), var(--orange));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 4px 18px rgba(255, 45, 85, .35));
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .82; } }
+    .sub { margin-top: 6px; font-size: 14px; color: var(--muted); }
+    .sub b { color: var(--text); }
+    .status { margin-top: 22px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: var(--muted); min-height: 22px; }
+    .spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--red);
+      animation: spin .8s linear infinite; display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner.show { display: inline-block; }
+    .actions { margin-top: 18px; display: none; flex-direction: column; gap: 10px; }
+    .actions.show { display: flex; }
+    button {
+      -webkit-app-region: no-drag;
+      padding: 12px 18px; border: 0; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    .btn-discord {
+      background: linear-gradient(90deg, var(--red), var(--orange)); color: #fff;
+      box-shadow: 0 8px 24px rgba(255, 45, 85, .3);
+    }
+    .btn-discord:hover { filter: brightness(1.08); }
+    .btn-key {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+    }
+    .btn-key:hover { color: var(--text); border-color: var(--muted); }
+    .ok { color: #22c55e; font-weight: 600; }
+    .err { color: #f87171; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">VXMP</div>
+    <div class="sub">Bienvenue sur <b>VXMP Opti</b></div>
+    <div class="sub" style="margin-top:2px">Merci de votre achat 💜</div>
+    <div class="status">
+      <div class="spinner" id="spinner"></div>
+      <span id="status">Vérification de votre licence Discord…</span>
+    </div>
+    <div class="actions" id="actions">
+      <button class="btn-discord" id="btn-discord">🔗 Se connecter avec Discord</button>
+      <button class="btn-key" id="btn-key">J'ai déjà une clé</button>
+    </div>
+  </div>
+  <script>
+    const statusEl = document.getElementById('status');
+    const spinner = document.getElementById('spinner');
+    const actions = document.getElementById('actions');
+    const btnDiscord = document.getElementById('btn-discord');
+    const btnKey = document.getElementById('btn-key');
+
+    window.booststream.splash.onStatus(({ status, detail }) => {
+      spinner.classList.toggle('show', status === 'checking' || status === 'login');
+      statusEl.classList.remove('ok', 'err');
+      if (status === 'no_license') {
+        spinner.classList.remove('show');
+        statusEl.textContent = detail || 'Aucune licence détectée.';
+        actions.classList.add('show');
+      } else if (status === 'checking') {
+        statusEl.textContent = detail || 'Vérification de votre licence Discord…';
+      } else if (status === 'login') {
+        statusEl.textContent = detail || 'Connexion à Discord…';
+      }
+    });
+
+    window.booststream.splash.onResult(({ ok, detail, owner }) => {
+      spinner.classList.remove('show');
+      statusEl.classList.add(ok ? 'ok' : 'err');
+      statusEl.textContent = ok
+        ? (owner ? '👑 Bienvenue propriétaire ! Démarrage…' : '✅ Licence vérifiée, démarrage…')
+        : (detail || 'Échec.');
+    });
+
+    btnDiscord.addEventListener('click', () => {
+      spinner.classList.add('show');
+      statusEl.textContent = 'Connexion à Discord…';
+      window.booststream.splash.login();
+    });
+
+    btnKey.addEventListener('click', () => {
+      window.booststream.splash.openMain();
+    });
+  </script>
+</body>
+</html>
