@@ -1,5 +1,4 @@
 # Fichier de déploiement Render (gratuit)
-# Root directory du service : server
 services:
   - type: web
     name: vxmp-opti
@@ -27,3 +26,28 @@ services:
         value: "2"
       - key: ALLOWED_REBINDS
         value: "3"
+
+  - type: worker
+    name: vxmp-discord-bot
+    runtime: python
+    rootDir: discord/bot
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: STAFF_ROLE_ID
+        sync: false
+      - key: CLIENT_ROLE_ID
+        sync: false
+      - key: VIP_ROLE_ID
+        sync: false
+      - key: CATEGORY_ID
+        sync: false
+      - key: TRANSCRIPT_CHANNEL_ID
+        sync: false
+      - key: DB_PATH
+        value: tickets.db
