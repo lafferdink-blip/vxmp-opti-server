@@ -227,11 +227,10 @@ async function handleMessage(msg) {
     const dl = DOWNLOAD_URL
       ? `> 📥 **Télécharge l'app ici :** ${DOWNLOAD_URL}`
       : '> 📥 Le lien de téléchargement te sera envoyé par le staff.';
-    await msg.reply([
+        await msg.reply([
       `✅ **Paiement confirmé** pour <@${mention.id}> !`,
-      `> **Clé :** \`${license.key}\``,
       `> **Plan :** ${planLabel}`,
-      `> Liée automatiquement à ton compte Discord.`,
+      `> Ton compte Discord est maintenant lié.`,
       dl,
       '',
       `Ouvre **VXMP Opti** → **Se connecter avec Discord** → c'est débloqué !`
@@ -240,14 +239,13 @@ async function handleMessage(msg) {
     try {
       await mention.send(
         `🎉 **VXMP Opti** — Paiement confirmé !\n\n` +
-        `**Ta clé :** \`${license.key}\`\n` +
         `**Plan :** ${planLabel}\n` +
-        `Elle est déjà liée à ton compte Discord.\n` +
+        `Ton compte Discord est maintenant lié.\n` +
         (DOWNLOAD_URL ? `**Télécharge l'app :** ${DOWNLOAD_URL}\n` : 'Le lien de téléchargement te sera envoyé par le staff.\n') +
         `\nOuvre l'application, clique sur **Se connecter avec Discord** et c'est bon !`
       );
     } catch {
-      // MP fermés : la clé reste affichée dans le ticket
+      // MP fermés
     }
     return;
   }
