@@ -1,26 +1,46 @@
 import { Router } from 'express';
-import { findLicenseByDiscord, getOwnerLicense, linkDiscord, isExpired, isOwner } from '../license.js';
+import { client } from '../bot.js';
 
 const router = Router();
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const BASE = process.env.API_BASE_URL || 'http://localhost:4000';
 const REDIRECT_URI = `${BASE}/api/discord/callback`;
+const GUILD_ID = process.env.DISCORD_GUILD_ID || '';
+const INVITE_URL = process.env.DISCORD_INVITE_URL || '';
 const hasOAuth = Boolean(CLIENT_ID && CLIENT_SECRET);
 
 // Résultats de connexion stockés en mémoire (interrogés par l'app desktop via /result)
-const pending = new Map(); // state -> { ok, discord, license, error, ts }
+const pending = new Map(); // state -> { ok, discord, error, ts }
 
-function page(title, msg, ok) {
+function page(title, msg, ok, extra = '') {
   const color = ok ? '#22c55e' : '#ef4444';
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
   <title>${title}</title>
   <style>body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0b0b10;color:#eee;display:flex;align-items:center;justify-content:center;height:100vh}
   .card{background:#16161f;border:1px solid #2a2a3a;border-radius:16px;padding:32px;max-width:420px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
   .logo{font-size:44px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ff2d55,#ff8a00);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .icon{font-size:40px} .ok{color:${color};font-weight:700;margin-top:10px}.sub{color:#9a9aab;font-size:13px;margin-top:6px}</style></head>
+  .icon{font-size:40px} .ok{color:${color};font-weight:700;margin-top:10px}.sub{color:#9a9aab;font-size:13px;margin-top:6px}
+  a{color:#7dd3fc;font-weight:600;text-decoration:none} a:hover{text-decoration:underline}</style></head>
   <body><div class="card"><div class="logo">VXMP</div><div class="icon">${ok ? '✅' : '❌'}</div>
-  <div class="ok">${msg}</div><div class="sub">Tu peux fermer cette fenêtre.</div></div></body></html>`;
+  <div class="ok">${msg}</div>${extra}<div class="sub">Tu peux fermer cette fenêtre.</div></div></body></html>`;
+}
+
+// Vérifie que le compte Discord est relié au bot = membre du serveur Discord
+async function isBotMember(discordId) {
+  try {
+    if (!client || !client.guilds || client.guilds.cache.size === 0) return false;
+    const targets = GUILD_ID
+      ? [client.guilds.cache.get(GUILD_ID)].filter(Boolean)
+      : [...client.guilds.cache.values()];
+    for (const guild of targets) {
+      const member = await guild.members.fetch(discordId).catch(() => null);
+      if (member) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 router.get('/auth-url', (req, res) => {
@@ -48,12 +68,12 @@ router.get('/login', (req, res) => {
   button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;background:linear-gradient(90deg,#ff2d55,#ff8a00);color:#fff;font-weight:700;cursor:pointer}
   .sub{color:#9a9aab;font-size:12px;margin-top:10px}</style></head>
   <body><div class="card"><div class="logo">VXMP</div>
-  <p>Connexion Discord (mode test)<br><span class="sub">Saisis l'identifiant Discord utilisé lors de l'achat.</span></p>
+  <p>Connexion Discord (mode test)<br><span class="sub">Saisis ton identifiant Discord.</span></p>
   <form action="${BASE}/api/discord/callback" method="get">
     <input type="hidden" name="state" value="${state}">
     <label>Identifiant Discord</label>
     <input name="discord_id" placeholder="Ex : 512345678901234567" required>
-    <button type="submit">Vérifier ma licence</button>
+    <button type="submit">Vérifier mon accès</button>
   </form></div></body></html>`);
 });
 
@@ -77,35 +97,31 @@ router.get('/callback', async (req, res) => {
     }
     if (!discordId) return res.status(400).send('identifiant Discord introuvable');
 
-    // Propriétaire : accès gratuit automatique, sans achat.
-    const ownerLicense = await getOwnerLicense(discordId);
-    if (ownerLicense) {
+    // Vérification : le compte doit être relié au bot (membre du serveur Discord)
+    const member = await isBotMember(discordId);
+    if (!member) {
       pending.set(state, {
-        ok: true,
-        owner: true,
-        discord: { id: discordId, username },
-        license: { key: ownerLicense.key, plan: 'owner', expiresAt: null, owner: true }
+        ok: false,
+        notMember: true,
+        detail: 'Ton compte n\'est pas relié au bot. Rejoins le serveur Discord VXMP puis réessaie.',
+        ts: Date.now()
       });
-      return res.send(page('VXMP · Propriétaire', `Bienvenue propriétaire ${username} ! Licence gratuite à vie.`, true));
-    }
-
-    const license = await findLicenseByDiscord(discordId);
-    if (!license) {
-      pending.set(state, { ok: false, notPurchased: true, discord: { id: discordId, username }, ts: Date.now() });
-      return res.send(page('VXMP · Non acheté', 'Aucun achat détecté pour ce compte Discord.', false));
-    }
-    if (license.status !== 'active' || isExpired(license)) {
-      pending.set(state, { ok: false, error: 'La licence de ce compte est inactive ou expirée.', discord: { id: discordId, username }, ts: Date.now() });
-      return res.send(page('VXMP · Licence invalide', 'Licence inactive ou expirée pour ce compte Discord.', false));
+      const extra = INVITE_URL
+        ? `<div class="sub" style="margin-top:12px"><a href="${INVITE_URL}" target="_blank">→ Rejoindre le serveur Discord</a></div>`
+        : '';
+      return res.send(page(
+        'VXMP · Accès refusé',
+        `Ton compte n'est pas relié au bot.<br>Rejoins le serveur Discord VXMP puis réessaie.${extra}`,
+        false
+      ));
     }
 
     pending.set(state, {
       ok: true,
-      owner: false,
       discord: { id: discordId, username },
-      license: { key: license.key, plan: license.plan, expiresAt: license.expires_at, owner: false }
+      ts: Date.now()
     });
-    res.send(page('VXMP · Licence vérifiée', `Licence vérifiée pour ${username}.`, true));
+    res.send(page('VXMP · Accès vérifié', `Bienvenue ${username} !<br>Ton compte est relié au bot.`, true));
   } catch (err) {
     console.error('[discord] callback:', err.message);
     pending.set(state, { ok: false, error: err.message, ts: Date.now() });
@@ -123,12 +139,12 @@ router.get('/result', (req, res) => {
   res.json(r);
 });
 
-router.post('/link', async (req, res) => {
-  const { key, discordId } = req.body || {};
-  if (!key || !discordId) return res.status(400).json({ error: 'key et discordId sont requis' });
-  const license = await linkDiscord(String(key).trim().toUpperCase(), discordId);
-  if (!license) return res.status(404).json({ error: 'Clé introuvable' });
-  res.json({ ok: true, discordId: license.discord_id });
+// Vérification silencieuse au démarrage de l'app (sans re-login)
+router.get('/member', async (req, res) => {
+  const id = String(req.query.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'id manquant' });
+  const member = await isBotMember(id);
+  res.json({ ok: member });
 });
 
 function cryptoRandom() {

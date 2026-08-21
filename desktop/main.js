@@ -126,33 +126,28 @@ function splashStatus(status, detail) {
   }
 }
 
-async function checkStoredLicense() {
-  const state = loadState();
-  if (!state.license) return false;
-  try {
-    const { key, hwid } = state.license;
-    const res = await fetch(`${API_URL}/api/license/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, hwid })
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 async function startVerification() {
   // Petite pause pour montrer le logo VXMP
   await new Promise(r => setTimeout(r, 1200));
-  splashStatus('checking', 'Vérification de votre licence Discord…');
+  splashStatus('checking', 'Vérification de ton accès Discord…');
 
-  const ok = await checkStoredLicense();
-  if (ok) {
-    await new Promise(r => setTimeout(r, 600));
-    return finishSplash();
+  const state = loadState();
+  if (state.discordId) {
+    try {
+      const r = await fetch(`${API_URL}/api/discord/member?id=${encodeURIComponent(state.discordId)}`);
+      const data = await r.json().catch(() => ({ ok: false }));
+      if (r.ok && data.ok) {
+        await new Promise(r2 => setTimeout(r2, 500));
+        return finishSplash();
+      }
+      splashStatus('no_license', 'Ton compte n\'est plus relié au bot. Reconnecte-toi avec Discord.');
+      return;
+    } catch {
+      splashStatus('no_license', 'Serveur de vérification injoignable. Réessaie plus tard.');
+      return;
+    }
   }
-  splashStatus('no_license', 'Aucune licence détectée sur cette machine.');
+  splashStatus('no_license', 'Connecte-toi avec Discord pour relier ton compte au bot.');
 }
 
 function finishSplash() {
@@ -161,7 +156,7 @@ function finishSplash() {
   mainWindow.show();
   mainWindow.focus();
   if (splashWindow && !splashWindow.isDestroyed()) splashWindow.destroy();
-  log('authentifié, fenêtre principale affichée');
+  log('fenêtre principale affichée');
 }
 
 async function runDiscordLogin() {
@@ -218,20 +213,23 @@ async function runDiscordLogin() {
     return { ok: false, detail: err.message };
   }
 }
-
-async function activateDiscordLicense(license) {
-  const hwid = await computeHwid();
-  const res = await fetch(`${API_URL}/api/license/activate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: license.key, hwid, deviceName: osHostname() })
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || 'Activation de la licence échouée.');
-  const state = loadState();
-  state.license = { key: license.key.toUpperCase(), hwid, deviceName: osHostname() };
-  saveState(state);
-  return true;
+function localLicenseObject(state) {
+  const key = state.license?.key || 'VXMP-OWNER';
+  return {
+    key,
+    plan: 'owner',
+    owner: true,
+    status: 'active',
+    expired: false,
+    expiresAt: null,
+    rebindsLeft: 5,
+    maxDevices: 3,
+    devices: [{
+      deviceName: osHostname(),
+      hwid: state.license?.hwid || 'LOCAL',
+      lastSeen: Date.now()
+    }]
+  };
 }
 
 function osHostname() {
@@ -268,25 +266,22 @@ app.on('window-all-closed', () => {
 // ---- IPC ----
 
 ipcMain.on('splash:login', () => {
-  runDiscordLogin().then(async (result) => {
-    if (!result.ok || !result.license) {
+  runDiscordLogin().then((result) => {
+    if (!result.ok || !result.discord) {
       splashStatus('no_license',
-        result.notPurchased ? 'Aucun achat détecté pour ce compte Discord.' : (result.detail || 'Échec de la connexion Discord.'));
-      if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.webContents.send('splash:result', { ok: false, detail: result.detail });
-      }
+        result.notMember
+          ? 'Ton compte n\'est pas relié au bot. Rejoins le serveur Discord VXMP puis réessaie.'
+          : (result.detail || 'Échec de la connexion Discord.'));
+      splashWindow?.webContents.send('splash:result', { ok: false, detail: result.detail });
       return;
     }
-    splashStatus('checking', 'Licence trouvée, activation…');
-    try {
-      await activateDiscordLicense(result.license);
-      splashWindow?.webContents.send('splash:result', { ok: true, owner: result.owner, license: result.license });
-      await new Promise(r => setTimeout(r, 900));
-      finishSplash();
-    } catch (err) {
-      splashStatus('no_license', err.message);
-      splashWindow?.webContents.send('splash:result', { ok: false, detail: err.message });
-    }
+    const st = loadState();
+    st.discordId = result.discord.id;
+    st.discordName = result.discord.username;
+    saveState(st);
+    splashStatus('checking', 'Compte relié au bot, démarrage…');
+    splashWindow?.webContents.send('splash:result', { ok: true });
+    setTimeout(finishSplash, 700);
   });
 });
 
@@ -297,15 +292,19 @@ ipcMain.on('splash:open-main', () => {
 
 ipcMain.handle('discord:login', async () => {
   const result = await runDiscordLogin();
-  if (!result.ok || !result.license) {
-    return { ok: false, detail: result.notPurchased ? 'Aucun achat détecté pour ce compte Discord.' : (result.detail || 'Échec de la connexion.') };
+  if (!result.ok || !result.discord) {
+    return {
+      ok: false,
+      detail: result.notMember
+        ? 'Ton compte n\'est pas relié au bot. Rejoins le serveur Discord VXMP puis réessaie.'
+        : (result.detail || 'Échec de la connexion.')
+    };
   }
-  try {
-    await activateDiscordLicense(result.license);
-    return { ok: true, key: result.license.key, plan: result.license.plan };
-  } catch (err) {
-    return { ok: false, detail: err.message };
-  }
+  const st = loadState();
+  st.discordId = result.discord.id;
+  st.discordName = result.discord.username;
+  saveState(st);
+  return { ok: true, key: 'DISCORD-' + result.discord.id, plan: 'member' };
 });
 
 ipcMain.handle('hardware:info', async () => {
@@ -327,60 +326,27 @@ ipcMain.handle('tweaks:list', () => optimizer.ALL_TWEAKS);
 
 ipcMain.handle('license:activate', async (event, { key, deviceName }) => {
   try {
+    const state = loadState();
     const hwid = await computeHwid();
-    const res = await fetch(`${API_URL}/api/license/activate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, hwid, deviceName })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.ok) {
-      const state = loadState();
-      state.license = { key: key.trim().toUpperCase(), hwid, deviceName };
-      saveState(state);
-    }
-    return { ok: res.ok, status: res.status, data };
+    state.license = { key: String(key || 'VXMP-OWNER').trim().toUpperCase(), hwid, deviceName: deviceName || osHostname() };
+    saveState(state);
+    return { ok: true, status: 200, data: { ok: true, license: localLicenseObject(state) } };
   } catch (err) {
-    return { ok: false, status: 0, data: { error: 'Impossible de joindre le serveur de licence : ' + err.message } };
+    return { ok: false, status: 0, data: { error: 'Erreur locale : ' + err.message } };
   }
 });
 
 ipcMain.handle('license:verify', async () => {
-  try {
-    const state = loadState();
-    if (!state.license) return { ok: false, status: 400, data: { error: 'Aucune licence activée sur cette machine.' } };
-    const { key, hwid } = state.license;
-    const res = await fetch(`${API_URL}/api/license/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, hwid })
-    });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    return { ok: false, status: 0, data: { error: 'Impossible de joindre le serveur de licence : ' + err.message } };
-  }
+  const state = loadState();
+  return { ok: true, status: 200, data: { ok: true, license: localLicenseObject(state) } };
 });
 
 ipcMain.handle('license:rebind', async () => {
-  try {
-    const state = loadState();
-    if (!state.license) return { ok: false, status: 400, data: { error: 'Aucune licence activée.' } };
-    const newHwid = await computeHwid();
-    const res = await fetch(`${API_URL}/api/license/rebind`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: state.license.key, oldHwid: state.license.hwid, newHwid, deviceName: state.license.deviceName })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.ok) {
-      state.license.hwid = newHwid;
-      saveState(state);
-    }
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    return { ok: false, status: 0, data: { error: 'Impossible de joindre le serveur de licence : ' + err.message } };
-  }
+  const state = loadState();
+  state.license = state.license || {};
+  state.license.hwid = await computeHwid();
+  saveState(state);
+  return { ok: true, status: 200, data: { ok: true } };
 });
 
 ipcMain.handle('license:local', () => {
