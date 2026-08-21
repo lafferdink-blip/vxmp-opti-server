@@ -126,6 +126,27 @@ function splashStatus(status, detail) {
   }
 }
 
+async function checkHwidWithServer(discordId) {
+  const hwid = await computeHwid();
+  const res = await fetch(`${API_URL}/api/discord/hwid/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ discordId, hwid })
+  });
+  const data = await res.json().catch(() => ({ ok: false, detail: 'Serveur injoignable.' }));
+  return { ...data, hwid };
+}
+
+async function bindHwidToServer(discordId, hwid) {
+  const res = await fetch(`${API_URL}/api/discord/hwid/bind`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ discordId, hwid, deviceName: osHostname() })
+  });
+  const data = await res.json().catch(() => ({ ok: false, detail: 'Serveur injoignable.' }));
+  return data;
+}
+
 async function startVerification() {
   // Petite pause pour montrer le logo VXMP
   await new Promise(r => setTimeout(r, 1200));
@@ -136,16 +157,25 @@ async function startVerification() {
     try {
       const r = await fetch(`${API_URL}/api/discord/member?id=${encodeURIComponent(state.discordId)}`);
       const data = await r.json().catch(() => ({ ok: false }));
-      if (r.ok && data.ok) {
-        await new Promise(r2 => setTimeout(r2, 500));
-        return finishSplash();
+      if (!r.ok || !data.ok) {
+        splashStatus('no_license', 'Ton compte n\'est plus relié au bot. Reconnecte-toi avec Discord.');
+        return;
       }
-      splashStatus('no_license', 'Ton compte n\'est plus relié au bot. Reconnecte-toi avec Discord.');
-      return;
+      splashStatus('checking', 'Vérification du matériel…');
+      const h = await checkHwidWithServer(state.discordId);
+      if (h.unbound) {
+        const b = await bindHwidToServer(state.discordId, h.hwid);
+        if (b.ok) return finishSplash();
+        splashStatus('no_license', b.detail || 'Impossible de lier ce PC.');
+        return;
+      }
+      if (h.ok) return finishSplash();
+      splashStatus('no_license',
+        '⛔ App liée à un autre PC. Demande à un staff de faire « !unbind @toi » sur Discord pour changer de machine.');
     } catch {
       splashStatus('no_license', 'Serveur de vérification injoignable. Réessaie plus tard.');
-      return;
     }
+    return;
   }
   splashStatus('no_license', 'Connecte-toi avec Discord pour relier ton compte au bot.');
 }
@@ -266,7 +296,7 @@ app.on('window-all-closed', () => {
 // ---- IPC ----
 
 ipcMain.on('splash:login', () => {
-  runDiscordLogin().then((result) => {
+  runDiscordLogin().then(async (result) => {
     if (!result.ok || !result.discord) {
       splashStatus('no_license',
         result.notMember
@@ -275,13 +305,28 @@ ipcMain.on('splash:login', () => {
       splashWindow?.webContents.send('splash:result', { ok: false, detail: result.detail });
       return;
     }
-    const st = loadState();
-    st.discordId = result.discord.id;
-    st.discordName = result.discord.username;
-    saveState(st);
-    splashStatus('checking', 'Compte relié au bot, démarrage…');
-    splashWindow?.webContents.send('splash:result', { ok: true });
-    setTimeout(finishSplash, 700);
+    splashStatus('checking', 'Liaison de ton PC…');
+    try {
+      const hwid = await computeHwid();
+      const b = await bindHwidToServer(result.discord.id, hwid);
+      if (!b.ok) {
+        const msg = b.error === 'hwid_mismatch'
+          ? '⛔ App déjà liée à un autre PC. Demande à un staff de faire « !unbind @toi » sur Discord.'
+          : (b.detail || 'Impossible de lier ce PC.');
+        splashStatus('no_license', msg);
+        splashWindow?.webContents.send('splash:result', { ok: false, detail: msg });
+        return;
+      }
+      const st = loadState();
+      st.discordId = result.discord.id;
+      st.discordName = result.discord.username;
+      saveState(st);
+      splashStatus('checking', 'PC lié, démarrage…');
+      splashWindow?.webContents.send('splash:result', { ok: true });
+      setTimeout(finishSplash, 700);
+    } catch (err) {
+      splashStatus('no_license', 'Erreur de liaison : ' + err.message);
+    }
   });
 });
 
@@ -300,11 +345,25 @@ ipcMain.handle('discord:login', async () => {
         : (result.detail || 'Échec de la connexion.')
     };
   }
-  const st = loadState();
-  st.discordId = result.discord.id;
-  st.discordName = result.discord.username;
-  saveState(st);
-  return { ok: true, key: 'DISCORD-' + result.discord.id, plan: 'member' };
+  try {
+    const hwid = await computeHwid();
+    const b = await bindHwidToServer(result.discord.id, hwid);
+    if (!b.ok) {
+      return {
+        ok: false,
+        detail: b.error === 'hwid_mismatch'
+          ? '⛔ App déjà liée à un autre PC. Demande un « !unbind » au staff sur Discord.'
+          : (b.detail || 'Impossible de lier ce PC.')
+      };
+    }
+    const st = loadState();
+    st.discordId = result.discord.id;
+    st.discordName = result.discord.username;
+    saveState(st);
+    return { ok: true, key: 'DISCORD-' + result.discord.id, plan: 'member' };
+  } catch (err) {
+    return { ok: false, detail: 'Erreur de liaison : ' + err.message };
+  }
 });
 
 ipcMain.handle('hardware:info', async () => {

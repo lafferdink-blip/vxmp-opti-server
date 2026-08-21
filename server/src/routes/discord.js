@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { client } from '../bot.js';
+import { bindHwid, checkHwid } from '../hwidbind.js';
 
 const router = Router();
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -145,6 +146,34 @@ router.get('/member', async (req, res) => {
   if (!id) return res.status(400).json({ error: 'id manquant' });
   const member = await isBotMember(id);
   res.json({ ok: member });
+});
+
+// Vérifie le HWID lié au compte (anti-partage)
+router.post('/hwid/check', async (req, res) => {
+  const { discordId, hwid } = req.body || {};
+  if (!discordId || !hwid) return res.status(400).json({ error: 'discordId et hwid requis' });
+  try {
+    const r = await checkHwid(discordId, hwid);
+    if (!r.ok) return res.status(403).json(r);
+    res.json(r);
+  } catch (err) {
+    console.error('[discord] hwid/check:', err.message);
+    res.status(500).json({ ok: false, detail: 'Erreur serveur' });
+  }
+});
+
+// Lie le HWID au compte au premier lancement
+router.post('/hwid/bind', async (req, res) => {
+  const { discordId, hwid, deviceName } = req.body || {};
+  if (!discordId || !hwid) return res.status(400).json({ error: 'discordId et hwid requis' });
+  try {
+    const r = await bindHwid(discordId, hwid, deviceName);
+    if (!r.ok) return res.status(403).json(r);
+    res.json(r);
+  } catch (err) {
+    console.error('[discord] hwid/bind:', err.message);
+    res.status(500).json({ ok: false, detail: 'Erreur serveur' });
+  }
 });
 
 function cryptoRandom() {

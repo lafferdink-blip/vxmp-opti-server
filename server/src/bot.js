@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { createLicense, revokeLicense, revokeByDiscord, publicLicenseView } from './license.js';
+import { unbindHwid } from './hwidbind.js';
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DOWNLOAD_URL = process.env.DOWNLOAD_URL || '';
@@ -266,6 +267,16 @@ async function handleMessage(msg) {
     const r = await revokeLicense(target);
     if (!r.ok) return msg.reply(`❌ ${r.detail}`);
     return msg.reply(`🔒 Clé révoquée : \`${r.license.key}\`\nL'utilisateur ne peut plus accéder à VXMP Opti.`);
+  }
+
+  // !unbind @user → délie le HWID (autorise un changement de PC)
+  if (content.startsWith('!unbind')) {
+    if (!isAdmin(msg)) return msg.reply('❌ Réservé au staff.');
+    const mention = msg.mentions.users.first();
+    if (!mention) return msg.reply('Usage : `!unbind @utilisateur`');
+    const n = await unbindHwid(mention.id);
+    if (!n) return msg.reply(`ℹ️ Aucun PC lié pour <@${mention.id}>.`);
+    return msg.reply(`🔓 PC délié pour <@${mention.id}> ! L'app pourra être activée sur une nouvelle machine au prochain lancement.`);
   }
 
   // !licences → liste des clés (admin)
