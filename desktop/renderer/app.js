@@ -383,6 +383,87 @@ function renderGpuBest(brandKey) {
 }
 
 // ---- BIOS ----
+const BIOS_BRANDS = [
+  {
+    key: 'asus', label: 'ASUS / ROG / TUF', detect: ['asus'],
+    hint: 'Appuie sur F7 dans le BIOS pour passer en mode Avancé (Advanced Mode).',
+    items: [
+      ['🧠 Profil mémoire XMP / EXPO', 'Ai Tweaker → Ai Overclock Tuner → XMP I ou EXPO I', 'Fait tourner ta RAM à sa vitesse maximale. Le gain le plus simple et le plus rentable.'],
+      ['🖼️ Resizable BAR', 'Advanced → PCI Subsystem Settings → Re-Size BAR Support → Enabled', 'Active aussi « Above 4G Decoding » → Enabled. Jusqu\'à +10 % de FPS sur les GPU récents.'],
+      ['🚫 CSM désactivé', 'Boot → Boot Device Control → UEFI Only (CSM Disabled)', 'Obligatoire pour Windows 11, Secure Boot et Resizable BAR.'],
+      ['🔐 Secure Boot activé', 'Boot → Secure Boot → OS Type → Windows UEFI Mode', 'Requis pour Windows 11 et certains anti-cheat (Valorant, Fortnite…).'],
+      ['⚡ Intel SpeedShift / AMD CPPC', 'Advanced → CPU Configuration → SpeedShift : Enabled', 'Le processeur monte en fréquence instantanément au lieu d\'attendre.'],
+      ['🌀 Courbes ventilateurs Q-Fan', 'Monitor → Q-Fan Configuration → mode PWM + courbe personnalisée', 'Ventilation silencieuse au repos, performante en charge.'],
+      ['🔌 ErP désactivé', 'APM → ErP Ready → Disabled', 'Permet Wake-on-LAN et un démarrage plus rapide.'],
+      ['❌ Désactiver le boot réseau', 'Boot → Boot Option Priorities → retirer PXE/Network', 'Démarrage plus rapide, évite les attentes réseau.']
+    ]
+  },
+  {
+    key: 'msi', label: 'MSI / Gaming / PRO', detect: ['msi', 'micro-star'],
+    hint: 'Appuie sur F7 dans le BIOS pour passer en mode Avancé.',
+    items: [
+      ['🧠 Profil mémoire XMP / EXPO', 'OC → Extreme Memory Profile (XMP) ou A-XMP / EXPO', 'Fait tourner ta RAM à sa vitesse maximale. Le gain le plus simple et le plus rentable.'],
+      ['🖼️ Resizable BAR', 'Settings → Advanced → PCI Subsystem → Re-Size BAR Support → Enabled', 'Active aussi « Above 4G memory decoding » → Enabled. Jusqu\'à +10 % de FPS.'],
+      ['🚫 CSM désactivé', 'Settings → Advanced → Boot → Boot mode select → UEFI', 'Obligatoire pour Windows 11, Secure Boot et Resizable BAR.'],
+      ['🔐 Secure Boot activé', 'Settings → Advanced → Windows OS Configuration → Secure Boot → Enabled', 'Requis pour Windows 11 et certains anti-cheat (Valorant, Fortnite…).'],
+      ['⚡ Intel SpeedShift', 'OC → CPU Features → Intel Speed Shift → Enabled', 'Montée en fréquence instantanée du processeur.'],
+      ['🌀 Smart Fan', 'Hardware Monitor → Smart Fan Mode → courbe personnalisée', 'Ventilation silencieuse au repos, performante en charge.'],
+      ['🔌 ErP désactivé', 'Settings → Advanced → Power Management → ErP → Disabled', 'Wake-on-LAN et démarrage plus rapide.'],
+      ['❌ Désactiver le boot réseau', 'Settings → Boot → retirer les entrées Network/PXE', 'Démarrage plus rapide.']
+    ]
+  },
+  {
+    key: 'gigabyte', label: 'Gigabyte / AORUS', detect: ['gigabyte', 'aorus'],
+    hint: 'Les menus clés sont Tweaker, Settings et Smart Fan 6.',
+    items: [
+      ['🧠 Profil mémoire XMP / EXPO', 'Tweaker → Advanced Memory Settings → Extreme Memory Profile (XMP) / EXPO', 'Fait tourner ta RAM à sa vitesse maximale.'],
+      ['🖼️ Resizable BAR', 'Settings → IO Ports → Above 4G Decoding : Enabled + Re-Size BAR Support : Auto/Enabled', 'Jusqu\'à +10 % de FPS sur les GPU récents.'],
+      ['🚫 CSM désactivé', 'Boot → CSM Support → Disabled', 'Obligatoire pour Windows 11, Secure Boot et Resizable BAR.'],
+      ['🔐 Secure Boot activé', 'Boot → Secure Boot → Secure Boot Enable', 'Requis pour Windows 11 et certains anti-cheat.'],
+      ['⚡ Intel SpeedShift', 'Tweaker → Advanced CPU Settings → Intel Speed Shift → Enabled', 'Réactivité maximale du processeur.'],
+      ['🌀 Smart Fan 6', 'Smart Fan 6 → courbes personnalisées par ventilateur', 'Silencieux au repos, frais en charge.'],
+      ['🔌 ErP désactivé', 'Settings → Platform Power → ErP → Disabled', 'Wake-on-LAN et démarrage rapide.']
+    ]
+  },
+  {
+    key: 'asrock', label: 'ASRock / Phantom / Steel Legend', detect: ['asrock'],
+    hint: 'Les réglages se trouvent dans OC Tweaker et Advanced.',
+    items: [
+      ['🧠 Profil mémoire XMP / EXPO', 'OC Tweaker → DRAM Profile Configuration → Profile 1 (XMP/EXPO)', 'Fait tourner ta RAM à sa vitesse maximale.'],
+      ['🖼️ Resizable BAR', 'Advanced → Chipset Configuration → Above 4G Decoding + Resizable BAR → Enabled', 'Jusqu\'à +10 % de FPS sur les GPU récents.'],
+      ['🚫 CSM désactivé', 'Boot → CSM → Disabled', 'Obligatoire pour Windows 11 et Secure Boot.'],
+      ['🔐 Secure Boot activé', 'Security → Secure Boot → Enabled', 'Requis pour Windows 11 et certains anti-cheat.'],
+      ['⚡ Intel SpeedShift', 'OC Tweaker → CPU Options → Speed Shift → Enabled', 'Réactivité maximale du processeur.'],
+      ['🌀 FAN-Tastic Tuning', 'Tools → FAN-Tastic Tuning → courbes personnalisées', 'Ventilation adaptative silencieuse.']
+    ]
+  },
+  {
+    key: 'oem', label: 'PC de marque (Dell / HP / Lenovo / Acer)', detect: ['dell', 'hp', 'hewlett', 'lenovo', 'acer', 'samsung', 'medion'],
+    hint: 'Les BIOS des PC de marque sont limités : peu d\'options avancées.',
+    items: [
+      ['🔄 BIOS à jour', 'Site du fabricant (Support → Drivers/BIOS) ou outil intégré (Dell Update, HP Support Assistant…)', 'Corrige bugs, compatibilité et performances.'],
+      ['🚫 Fast Boot activé', 'BIOS → Boot / Startup → Fast Boot → Enabled', 'Démarrage nettement plus rapide.'],
+      ['🔐 Secure Boot activé', 'BIOS → Security → Secure Boot → Enabled', 'Requis pour Windows 11 et certains anti-cheat.'],
+      ['🧠 XMP si disponible', 'BIOS → Performance / Memory → XMP (rare sur les PC de marque)', 'Si l\'option existe, active-la pour la pleine vitesse RAM.'],
+      ['💻 Optimisations côté Windows', 'Onglets Optimisation et Services de VXMP Opti', 'Sur PC de marque, la plupart des gains se font dans Windows : débloat, services, télémétrie.']
+    ]
+  }
+];
+
+function detectBiosBrand(manufacturer) {
+  const m = String(manufacturer || '').toLowerCase();
+  return BIOS_BRANDS.find(b => b.detect.some(d => m.includes(d))) || null;
+}
+
+function biosItemsHtml(items) {
+  return `<div class="bios-items">` + items.map(([t, where, why]) => `
+    <div class="bios-item">
+      <div class="bios-title">${t}</div>
+      <div class="bios-where">📍 ${where}</div>
+      <div class="bios-why">${why}</div>
+    </div>`).join('') + `</div>`;
+}
+
 async function loadBios() {
   const info = await api.systemBios();
   const box = $('#bios-cards');
@@ -402,6 +483,68 @@ async function loadBios() {
   box.innerHTML = items.map(([k, v]) => `<div class="hw-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
   msg.className = 'msg';
   msg.textContent = '💡 Une mise à jour BIOS se fait depuis le site du fabricant de la carte mère.';
+
+  // Recommandations selon le matériel détecté
+  const hw = await api.hardware();
+  const cpuName = hw?.cpu?.name || '';
+  const isAmd = /amd|ryzen/i.test(cpuName);
+  const gpuInfo = await api.gpuInfo().catch(() => null);
+  const gpuBrand = gpuInfo?.brand || '';
+  const isLaptop = info.systemType === 2;
+  const isUefi = String(info.firmware || '').toLowerCase() === 'uefi';
+
+  const universal = [];
+  universal.push([
+    isAmd ? '🧠 Profil mémoire EXPO / DOCP' : '🧠 Profil mémoire XMP',
+    isAmd ? 'OC/Tweaker → EXPO ou DOCP → Profile 1' : 'OC/Ai Tweaker → XMP → Profile 1',
+    'Sans ça, ta RAM tourne à 2133/2400 MHz au lieu de sa vraie vitesse. Gain énorme sur les FPS (jusqu\'à +20 %).'
+  ]);
+  if (gpuBrand === 'nvidia' || gpuBrand === 'amd') {
+    universal.push([
+      '🖼️ Resizable BAR', 'PCI Subsystem / IO Ports → Above 4G Decoding : Enabled + Re-Size BAR : Enabled',
+      `Compatible avec ta carte ${gpuBrand === 'nvidia' ? 'NVIDIA (RTX 3000+)' : 'AMD (RX 6000+)'} : jusqu'à +10 % de FPS moyen.`
+    ]);
+  }
+  if (isUefi) {
+    universal.push(['🚫 CSM désactivé', 'Boot → CSM → Disabled', 'Ton PC démarre déjà en UEFI : désactive le CSM pour Secure Boot et Resizable BAR.']);
+    universal.push(['🔐 Secure Boot activé', 'Security/Boot → Secure Boot → Enabled', 'Requis pour Windows 11 et les anti-cheats récents (Valorant, Fortnite, CoD…).']);
+  } else {
+    universal.push(['⚠️ Passer en UEFI', 'Boot → Boot Mode → UEFI (reconvertir le disque en GPT via mbr2gpt)', 'Ton PC est encore en Legacy/MBR : l\'UEFI est plus rapide à démarrer et requis pour Windows 11.']);
+  }
+  if (!isLaptop) {
+    universal.push(['🌀 Courbes ventilateurs', 'Hardware Monitor / Q-Fan / Smart Fan → courbe personnalisée', 'Silencieux au repos, frais en charge : meilleur boost longue durée.']);
+    universal.push(['⚡ Boost CPU activé', isAmd ? 'OC → PBO / Precision Boost : Enabled + CPPC Preferred Cores' : 'Advanced → CPU → SpeedShift + Turbo : Enabled', 'Profite du maximum de ton processeur en jeu.']);
+  } else {
+    universal.push(['💻 PC portable', 'Options BIOS souvent limitées', 'Concentre-toi sur les onglets Optimisation, Services et GPU de VXMP Opti pour les gains.']);
+  }
+
+  const brand = detectBiosBrand(info.board?.manufacturer);
+  const recoBox = $('#bios-reco');
+  if (brand) {
+    recoBox.innerHTML = `
+      <div class="card bios-brand-card">
+        <div class="bios-brand-head">✅ Ta carte mère : <b>${info.board.manufacturer}</b> ${info.board.product ? `(${info.board.product})` : ''}</div>
+        <div class="bios-hint">💡 ${brand.hint}</div>
+        ${biosItemsHtml(brand.items)}
+        <div class="bios-subhead">🎯 Réglages universels recommandés pour TA config</div>
+        ${biosItemsHtml(universal)}
+      </div>`;
+  } else {
+    recoBox.innerHTML = `
+      <div class="card bios-brand-card">
+        <div class="bios-brand-head">ℹ️ Fabricant non reconnu : <b>${info.board?.manufacturer || 'inconnu'}</b> — voici les réglages universels.</div>
+        ${biosItemsHtml(universal)}
+      </div>`;
+  }
+
+  // Toutes les propositions par fabricant
+  const allBox = $('#bios-all-brands');
+  allBox.innerHTML = BIOS_BRANDS.map(b => `
+    <details class="bios-details" ${brand && b.key === brand.key ? 'open' : ''}>
+      <summary>${b.label}${brand && b.key === brand.key ? ' ← ta carte mère' : ''}</summary>
+      <div class="bios-hint">💡 ${b.hint}</div>
+      ${biosItemsHtml(b.items)}
+    </details>`).join('');
 }
 loadBios();
 
