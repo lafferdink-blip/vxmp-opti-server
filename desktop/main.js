@@ -16,7 +16,7 @@ const postinstall = require('./src/optimizer/postinstall');
 const driver = require('./src/driver');
 const games = require('./src/optimizer/games');
 
-const API_URL = process.env.BOOSTSTREAM_API || 'https://vxmp-opti.onrender.com';
+const API_URL = process.env.BOOSTSTREAM_API || 'https://vxmp-opti-server-2.onrender.com';
 let mainWindow = null;
 let splashWindow = null;
 let authWindow = null;
